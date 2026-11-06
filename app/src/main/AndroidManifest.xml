@@ -25,6 +25,49 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
+            <!-- Open links directly in AR-Vids: Instagram, YouTube, Facebook, X -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="www.instagram.com" android:pathPattern="/reel/.*" />
+                <data android:scheme="https" android:host="www.instagram.com" android:pathPattern="/reels/.*" />
+                <data android:scheme="https" android:host="www.instagram.com" android:pathPattern="/p/.*" />
+                <data android:scheme="https" android:host="instagram.com" android:pathPattern="/reel/.*" />
+                <data android:scheme="https" android:host="instagram.com" android:pathPattern="/reels/.*" />
+                <data android:scheme="https" android:host="instagram.com" android:pathPattern="/p/.*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="www.youtube.com" android:pathPattern="/watch" />
+                <data android:scheme="https" android:host="www.youtube.com" android:pathPattern="/shorts/.*" />
+                <data android:scheme="https" android:host="www.youtube.com" android:pathPattern="/live/.*" />
+                <data android:scheme="https" android:host="youtube.com" android:pathPattern="/watch" />
+                <data android:scheme="https" android:host="youtube.com" android:pathPattern="/shorts/.*" />
+                <data android:scheme="https" android:host="youtube.com" android:pathPattern="/live/.*" />
+                <data android:scheme="https" android:host="youtu.be" android:pathPattern="/.*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="www.facebook.com" android:pathPattern="/watch/.*" />
+                <data android:scheme="https" android:host="www.facebook.com" android:pathPattern="/reel/.*" />
+                <data android:scheme="https" android:host="www.facebook.com" android:pathPattern="/share/.*" />
+                <data android:scheme="https" android:host="facebook.com" android:pathPattern="/watch/.*" />
+                <data android:scheme="https" android:host="facebook.com" android:pathPattern="/reel/.*" />
+                <data android:scheme="https" android:host="facebook.com" android:pathPattern="/share/.*" />
+                <data android:scheme="https" android:host="fb.watch" android:pathPattern="/.*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="x.com" android:pathPattern="/.*/status/.*" />
+                <data android:scheme="https" android:host="twitter.com" android:pathPattern="/.*/status/.*" />
+            </intent-filter>
         </activity>
     </application>
 </manifest>
