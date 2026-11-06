@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ar_bg">#0F0B1E</color>
+    <color name="ar_surface">#1B1430</color>
+    <color name="ar_card">#241B3D</color>
+    <color name="ar_accent">#7C3AED</color>
+    <color name="ar_accent2">#2563EB</color>
+    <color name="ar_icon_bg">#5B21B6</color>
+</resources>
