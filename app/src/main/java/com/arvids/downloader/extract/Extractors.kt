@@ -48,16 +48,33 @@ private fun unescapeHtmlEntities(s: String): String {
 }
 
 object InstagramExtractor {
+    private const val IG_APP_ID = "936619743392459"
+
+    /** Headers for Instagram requests; adds the login session when logged in. */
+    private fun authHeaders(): Map<String, String> {
+        val headers = mutableMapOf("Accept-Language" to "en-US,en;q=0.9")
+        InstagramSession.cookieHeader()?.let { headers["Cookie"] = it }
+        InstagramSession.csrfToken()?.let { headers["X-CSRFToken"] = it }
+        return headers
+    }
+
+    private fun apiHeaders(): Map<String, String> {
+        val headers = authHeaders().toMutableMap()
+        headers["X-IG-App-ID"] = IG_APP_ID
+        headers["X-Requested-With"] = "XMLHttpRequest"
+        headers["Accept"] = "application/json"
+        return headers
+    }
+
     fun extract(url: String): DetectedMedia? {
         val id = Regex("/(?:reel|reels|p)/([A-Za-z0-9_-]+)")
             .find(url)?.groupValues?.getOrNull(1) ?: return null
-        // 1) Direct Instagram page (works only when Instagram serves media data).
-        var html = Http.get(
-            "https://www.instagram.com/reel/$id/",
-            mapOf("Accept-Language" to "en-US,en;q=0.9")
-        )
+        val headers = authHeaders()
+        val loggedIn = InstagramSession.isLoggedIn
+        // 1) Direct Instagram page — with a login session this carries media data.
+        var html = Http.get("https://www.instagram.com/reel/$id/", headers)
         if (html == null || !html.contains("video_url")) {
-            html = Http.get("https://www.instagram.com/p/$id/embed/")
+            html = Http.get("https://www.instagram.com/p/$id/embed/", headers)
         }
         var videoUrl = html?.let { jsonString(it, "video_url") }
         var thumb = html?.let { jsonString(it, "display_url") }
@@ -65,9 +82,43 @@ object InstagramExtractor {
             Regex(""""caption"\s*:\s*\{[^}]*"text"\s*:\s*"((?:\\.|[^"\\])*)"""")
                 .find(it)?.groupValues?.getOrNull(1)?.let { t -> unescapeJson(t) }
         }?.trim()?.take(80)?.ifBlank { null }
-        // 2) Fallback: public mirror page for the same post. Instagram now
-        // serves a login wall to anonymous requests, so the direct page
-        // usually carries no media data at all.
+        // 2) Logged-in media info endpoint (best quality from video_versions).
+        if (videoUrl == null && loggedIn) {
+            val apiJson = Http.get(
+                "https://i.instagram.com/api/v1/media/$id/info/",
+                apiHeaders()
+            )
+            if (apiJson != null) {
+                try {
+                    val item = JSONObject(apiJson).optJSONArray("items")?.optJSONObject(0)
+                    val versions = item?.optJSONArray("video_versions")
+                    var best: String? = null
+                    var bestWidth = 0
+                    if (versions != null) {
+                        for (i in 0 until versions.length()) {
+                            val v = versions.optJSONObject(i) ?: continue
+                            val u = v.optString("url")
+                            val w = v.optInt("width", 0)
+                            if (u.isNotBlank() && w >= bestWidth) {
+                                bestWidth = w
+                                best = u
+                            }
+                        }
+                    }
+                    videoUrl = best
+                    val apiThumb = item?.optJSONObject("image_versions2")
+                        ?.optJSONArray("candidates")?.optJSONObject(0)?.optString("url")
+                        ?.takeIf { it.isNotBlank() }
+                    if (apiThumb != null) thumb = apiThumb
+                    val apiTitle = item?.optJSONObject("caption")?.optString("text")
+                        ?.trim()?.take(80)?.ifBlank { null }
+                    if (apiTitle != null) title = apiTitle
+                } catch (e: Exception) {
+                    // fall through to the mirror fallback
+                }
+            }
+        }
+        // 3) Fallback: public mirror page for the same post.
         if (videoUrl == null) {
             val mirror = Http.get(
                 "https://imginn.com/p/$id/",
