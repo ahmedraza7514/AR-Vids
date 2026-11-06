@@ -68,7 +68,7 @@ object YouTubeExtractor {
                     formats += MediaFormat(
                         label = label,
                         ext = ext,
-                        url = vs.url,
+                        url = vs.url ?: return@forEach,
                         isAudio = false,
                         sortKey = vs.height * 10 + if (vs.isVideoOnly) 0 else 1
                     )
@@ -83,7 +83,7 @@ object YouTubeExtractor {
                     formats += MediaFormat(
                         label = "Audio • $kbps kbps",
                         ext = ext,
-                        url = aus.url,
+                        url = aus.url ?: return@forEach,
                         isAudio = true,
                         sortKey = 5
                     )
