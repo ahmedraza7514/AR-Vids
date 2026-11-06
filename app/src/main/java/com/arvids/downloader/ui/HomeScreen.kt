@@ -75,9 +75,22 @@ fun HomeScreen(viewModel: MainViewModel) {
     val detectState by viewModel.detect.collectAsState()
     val downloads by viewModel.downloads.collectAsState()
     val statusMsg by viewModel.statusMsg.collectAsState()
+    val igLoggedIn by viewModel.igLoggedIn.collectAsState()
+    val showIgLogin by viewModel.showIgLogin.collectAsState()
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
     var selectedFormat by remember { mutableStateOf<MediaFormat?>(null) }
+
+    if (showIgLogin) {
+        InstagramLoginScreen(
+            onBack = { viewModel.setShowIgLogin(false) },
+            onLoggedIn = {
+                viewModel.refreshInstagramLogin()
+                viewModel.setShowIgLogin(false)
+            }
+        )
+        return
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -108,6 +121,48 @@ fun HomeScreen(viewModel: MainViewModel) {
                 color = Color(0xFFB0AEC9),
                 fontSize = 13.sp
             )
+        }
+        item {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = if (igLoggedIn) Color(0xFF1B3D2E) else Color(0xFF241B3D)
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            if (igLoggedIn) "Instagram login ho gaya" else "Instagram Login",
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp
+                        )
+                        Text(
+                            if (igLoggedIn) "Reels download ke liye tayyar ho."
+                            else "Reels download karne ke liye login zaroori hai.",
+                            color = Color(0xFFB0AEC9),
+                            fontSize = 13.sp
+                        )
+                    }
+                    if (igLoggedIn) {
+                        OutlinedButton(onClick = { viewModel.logoutInstagram() }) {
+                            Text("Logout")
+                        }
+                    } else {
+                        Button(
+                            onClick = { viewModel.setShowIgLogin(true) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF7C3AED)
+                            )
+                        ) {
+                            Text("Login")
+                        }
+                    }
+                }
+            }
         }
         item {
             Card(
