@@ -30,11 +30,22 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
+        // Shared text from Instagram / YouTube / Facebook / X share sheet.
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return
             val url = Regex("https?://\\S+").find(text)?.value ?: text
-            viewModel.setLink(url)
-            viewModel.detectLink(url)
+            openLink(url)
+            return
         }
+        // Link tapped in a browser or chat (ACTION_VIEW deep link).
+        if (intent?.action == Intent.ACTION_VIEW) {
+            val url = intent.data?.toString() ?: return
+            openLink(url)
+        }
+    }
+
+    private fun openLink(url: String) {
+        viewModel.setLink(url)
+        viewModel.detectLink(url)
     }
 }
