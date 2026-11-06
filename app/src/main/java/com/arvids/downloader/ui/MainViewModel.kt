@@ -4,10 +4,12 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.arvids.downloader.download.DownloadHelper
+import com.arvids.downloader.extract.InstagramSession
 import com.arvids.downloader.extract.LinkExtractor
 import com.arvids.downloader.model.DetectedMedia
 import com.arvids.downloader.model.DownloadItem
 import com.arvids.downloader.model.MediaFormat
+import com.arvids.downloader.model.Platform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,8 +36,30 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _statusMsg = MutableStateFlow("")
     val statusMsg: StateFlow<String> = _statusMsg
 
+    private val _igLoggedIn = MutableStateFlow(false)
+    val igLoggedIn: StateFlow<Boolean> = _igLoggedIn
+
+    private val _showIgLogin = MutableStateFlow(false)
+    val showIgLogin: StateFlow<Boolean> = _showIgLogin
+
     init {
+        InstagramSession.init(getApplication())
+        _igLoggedIn.value = InstagramSession.isLoggedIn
         refreshDownloads()
+    }
+
+    fun setShowIgLogin(value: Boolean) {
+        _showIgLogin.value = value
+    }
+
+    fun refreshInstagramLogin() {
+        _igLoggedIn.value = InstagramSession.isLoggedIn
+    }
+
+    fun logoutInstagram() {
+        InstagramSession.clear()
+        _igLoggedIn.value = false
+        _statusMsg.value = "Instagram se logout ho gaya."
     }
 
     fun setLink(value: String) {
@@ -58,6 +82,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             withContext(Dispatchers.Main) {
                 _detect.value = if (result != null && result.formats.isNotEmpty()) {
                     DetectState.Ready(result)
+                } else if (LinkExtractor.detectPlatform(clean) == Platform.INSTAGRAM &&
+                    !InstagramSession.isLoggedIn
+                ) {
+                    DetectState.Error("Is link se video nahi mila. Instagram ke liye pehle upar Instagram Login se login karo.")
                 } else {
                     DetectState.Error("Is link se video nahi mila. Link public hona chahiye — login wali ya private video nahi chalegi.")
                 }
