@@ -42,10 +42,16 @@ private fun jsonString(html: String, key: String): String? {
     return regex.find(html)?.groupValues?.getOrNull(1)?.let { unescapeJson(it) }
 }
 
+/** Unescape HTML entities found in scraped page markup (imginn writes & as &#38;). */
+private fun unescapeHtmlEntities(s: String): String {
+    return s.replace("&#38;", "&").replace("&amp;", "&")
+}
+
 object InstagramExtractor {
     fun extract(url: String): DetectedMedia? {
         val id = Regex("/(?:reel|reels|p)/([A-Za-z0-9_-]+)")
             .find(url)?.groupValues?.getOrNull(1) ?: return null
+        // 1) Direct Instagram page (works only when Instagram serves media data).
         var html = Http.get(
             "https://www.instagram.com/reel/$id/",
             mapOf("Accept-Language" to "en-US,en;q=0.9")
@@ -53,16 +59,42 @@ object InstagramExtractor {
         if (html == null || !html.contains("video_url")) {
             html = Http.get("https://www.instagram.com/p/$id/embed/")
         }
-        html ?: return null
-        val videoUrl = jsonString(html, "video_url") ?: return null
-        val thumb = jsonString(html, "display_url")
-        val caption = Regex(""""caption"\s*:\s*\{[^}]*"text"\s*:\s*"((?:\\.|[^"\\])*)"""")
-            .find(html)?.groupValues?.getOrNull(1)?.let { unescapeJson(it) }
-        val title = caption?.trim()?.take(80)?.ifBlank { null } ?: "Instagram Reel"
+        var videoUrl = html?.let { jsonString(it, "video_url") }
+        var thumb = html?.let { jsonString(it, "display_url") }
+        var title: String? = html?.let {
+            Regex(""""caption"\s*:\s*\{[^}]*"text"\s*:\s*"((?:\\.|[^"\\])*)"""")
+                .find(it)?.groupValues?.getOrNull(1)?.let { t -> unescapeJson(t) }
+        }?.trim()?.take(80)?.ifBlank { null }
+        // 2) Fallback: public mirror page for the same post. Instagram now
+        // serves a login wall to anonymous requests, so the direct page
+        // usually carries no media data at all.
+        if (videoUrl == null) {
+            val mirror = Http.get(
+                "https://imginn.com/p/$id/",
+                mapOf("Accept-Language" to "en-US,en;q=0.9")
+            )
+            if (mirror != null) {
+                videoUrl = Regex("""<video[^>]*\ssrc="([^"]+)"""")
+                    .find(mirror)?.groupValues?.getOrNull(1)
+                    ?.let { unescapeHtmlEntities(it) }
+                thumb = Regex("""<meta property="og:image" content="([^"]+)"""")
+                    .find(mirror)?.groupValues?.getOrNull(1)
+                    ?.let { unescapeHtmlEntities(it) }
+                    ?: Regex("""<video[^>]*\sposter="([^"]+)"""")
+                        .find(mirror)?.groupValues?.getOrNull(1)
+                        ?.let { unescapeHtmlEntities(it) }
+                title = Regex("""<meta property="og:title" content="([^"]+)"""")
+                    .find(mirror)?.groupValues?.getOrNull(1)
+                    ?.let { unescapeHtmlEntities(it) }
+                    ?.removeSuffix(" instagram post download - imginn.com")
+                    ?.trim()?.take(80)?.ifBlank { null }
+            }
+        }
+        videoUrl ?: return null
         return DetectedMedia(
             platform = Platform.INSTAGRAM,
             sourceUrl = url,
-            title = title,
+            title = title ?: "Instagram Reel",
             thumbnailUrl = thumb,
             formats = listOf(
                 MediaFormat("Video • MP4", "mp4", videoUrl, false, sortKey = 100)
